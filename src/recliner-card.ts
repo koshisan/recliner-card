@@ -14,7 +14,7 @@ import {
   HA_TOKENS,
 } from './types.js';
 
-const VERSION = '0.1.0';
+const VERSION = '0.1.1';
 
 const RAMP_TICK_MS = 30;
 const RAMP_STEP = 0.025;
@@ -94,6 +94,12 @@ export class RecliningCard extends LitElement {
     if (!entityId || !this.hass) return null;
     const st = this.hass.states[entityId];
     if (!st) return null;
+    const domain = this._domainOf(entityId);
+    if (domain === 'input_number' || domain === 'number' || domain === 'sensor') {
+      const num = Number(st.state);
+      if (Number.isFinite(num)) return clamp01(num / 100);
+      return null;
+    }
     const pos = st.attributes?.current_position;
     if (typeof pos === 'number') return clamp01(pos / 100);
     if (st.state === 'open') return 1;
@@ -226,39 +232,48 @@ export class RecliningCard extends LitElement {
     return key === 'recline' ? c.recline_entity : key === 'footrest' ? c.footrest_entity : c.lift_entity;
   }
 
+  private _writePosition(entityId: string, value01: number): void {
+    const pos = Math.round(clamp01(value01) * 100);
+    const domain = this._domainOf(entityId);
+    if (domain === 'input_number' || domain === 'number') {
+      this._callService(domain, 'set_value', { entity_id: entityId, value: pos });
+    } else {
+      this._callService('cover', 'set_cover_position', { entity_id: entityId, position: pos });
+    }
+  }
+
+  private _writeStop(entityId: string): void {
+    const domain = this._domainOf(entityId);
+    if (domain === 'cover') {
+      this._callService('cover', 'stop_cover', { entity_id: entityId });
+    }
+    // input_number/number have no stop concept — last set_value sticks
+  }
+
   private _dispatchHoldStart(mkey: MotorKey, otherKey: MotorKey | null): void {
     const target = this._entityFor(mkey);
-    if (target) this._callService('cover', 'set_cover_position', { entity_id: target, position: 100 });
+    if (target) this._writePosition(target, 1);
     if (otherKey) {
       const otherEnt = this._entityFor(otherKey);
       const otherVal = this._local[otherKey];
       if (otherEnt && otherVal > 0.01) {
-        this._callService('cover', 'set_cover_position', { entity_id: otherEnt, position: 0 });
+        this._writePosition(otherEnt, 0);
       }
     }
   }
 
   private _dispatchHoldStop(mkey: MotorKey, otherKey: MotorKey | null): void {
-    const ents: string[] = [];
-    const a = this._entityFor(mkey);
-    if (a) ents.push(a);
-    if (otherKey) {
-      const b = this._entityFor(otherKey);
-      if (b) ents.push(b);
-    }
-    for (const eid of ents) {
-      this._callService('cover', 'stop_cover', { entity_id: eid });
-    }
     for (const key of [mkey, otherKey].filter((k): k is MotorKey => !!k)) {
       const ent = this._entityFor(key);
-      if (ent) this._commitCover(ent, this._local[key]);
+      if (!ent) continue;
+      this._writeStop(ent);
+      this._writePosition(ent, this._local[key]);
     }
   }
 
   private _commitCover(entityId: string | undefined, value01: number): void {
     if (!entityId) return;
-    const pos = Math.round(clamp01(value01) * 100);
-    this._callService('cover', 'set_cover_position', { entity_id: entityId, position: pos });
+    this._writePosition(entityId, value01);
   }
 
   private _domainOf(entityId: string): string {
