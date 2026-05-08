@@ -128,6 +128,12 @@ export function renderChair(props: RecliningChairProps): SVGTemplateResult {
   const transition = 'transform 0.55s cubic-bezier(.4,.05,.2,1)';
   const slabTransition = 'transform 0.6s cubic-bezier(.4,.05,.2,1)';
 
+  // Use CSS transform + transform-origin in viewBox coordinates so the browser
+  // interpolates only the angle (matrix-decomposition of `rotate(a cx cy)` SVG
+  // attribute can shift the pivot mid-tween → visible wobble).
+  const rot = (deg: number, ox: number, oy: number, dur: string) =>
+    `transform: rotate(${deg}deg); transform-origin: ${ox}px ${oy}px; transform-box: view-box; transition: ${dur};`;
+
   return svg`
     <svg viewBox="-70 0 430 240" width=${size} height=${size * 240 / 430}
          style="display:block; overflow:visible;"
@@ -144,16 +150,16 @@ export function renderChair(props: RecliningChairProps): SVGTemplateResult {
         fill="rgba(0,0,0,0.32)" opacity=${theme === 'dark' ? 0.55 : 0.16}
         style="transition: all 0.5s;"/>
 
-      <g transform="rotate(${recliningTiltDeg} 80 212)" style="transition: ${transition};">
-      <g transform="rotate(${liftDeg} 212 212)" style="transition: ${transition};">
+      <g style=${rot(recliningTiltDeg, 80, 212, transition)}>
+      <g style=${rot(liftDeg, 212, 212, transition)}>
 
-        <g transform="rotate(${footDeg} 212 128)" style="transition: ${slabTransition};">
+        <g style=${rot(footDeg, 212, 128, slabTransition)}>
           ${slab({ x: 212, y: 128, w: 72, h: 30, rx: 8, hiAxis: 'h', cushion: p.cushion, cushionHi: p.cushionHi, seam: p.seam })}
           <line x1="220" y1="143" x2="276" y2="143" stroke=${p.seam} stroke-width="0.5" opacity="0.4"/>
           ${hotspot(hotArgs('leg', 248, 143))}
         </g>
 
-        <g transform="rotate(${reclineDeg} 72 158)" style="transition: ${slabTransition};">
+        <g style=${rot(reclineDeg, 72, 158, slabTransition)}>
           ${slab({ x: 72, y: 32, w: 30, h: 126, rx: 9, hiAxis: 'v', cushion: p.cushion, cushionHi: p.cushionHi, seam: p.seam })}
           <line x1="87" y1="44" x2="87" y2="152" stroke=${p.seam} stroke-width="0.6" opacity="0.55"/>
           <line x1="76" y1="95" x2="98" y2="95" stroke=${p.seam} stroke-width="0.5" opacity="0.4"/>

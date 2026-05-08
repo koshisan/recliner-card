@@ -14,7 +14,7 @@ import {
   HA_TOKENS,
 } from './types.js';
 
-const VERSION = '0.1.1';
+const VERSION = '0.1.2';
 
 const RAMP_TICK_MS = 30;
 const RAMP_STEP = 0.025;
