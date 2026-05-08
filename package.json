@@ -1,0 +1,37 @@
+{
+  "name": "recliner-card",
+  "version": "0.1.0",
+  "description": "Home Assistant Lovelace card for powered recliner control (recline, footrest, lift, heat, massage zones).",
+  "main": "dist/recliner-card.js",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c",
+    "watch": "rollup -c -w",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "home-assistant",
+    "lovelace",
+    "custom-card",
+    "recliner"
+  ],
+  "author": "koshisan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/koshisan/recliner-card.git"
+  },
+  "dependencies": {
+    "custom-card-helpers": "^1.9.0",
+    "lit": "^3.2.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.1",
+    "@rollup/plugin-node-resolve": "^15.3.0",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.1.1",
+    "rollup": "^4.24.0",
+    "tslib": "^2.8.0",
+    "typescript": "^5.6.3"
+  }
+}

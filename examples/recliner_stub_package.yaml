@@ -1,0 +1,171 @@
+# Recliner stub — drop into packages/ for UI testing without real hardware.
+#
+# Enable packages in configuration.yaml first:
+#   homeassistant:
+#     packages: !include_dir_named packages
+#
+# Then put this file at packages/recliner_stub.yaml and restart HA.
+#
+# Provides:
+#   cover.recliner_back, cover.recliner_footrest, cover.recliner_lift
+#   switch.recliner_heat
+#   select.recliner_massage_{back,lumbar,thigh,leg}
+# all backed by input_* helpers so the card can drive them locally.
+
+input_number:
+  recliner_back_pos:
+    name: Recliner Back Position
+    min: 0
+    max: 100
+    step: 1
+    initial: 30
+  recliner_footrest_pos:
+    name: Recliner Footrest Position
+    min: 0
+    max: 100
+    step: 1
+    initial: 0
+  recliner_lift_pos:
+    name: Recliner Lift Position
+    min: 0
+    max: 100
+    step: 1
+    initial: 0
+
+input_boolean:
+  recliner_heat:
+    name: Recliner Heat
+
+input_select:
+  recliner_massage_back:
+    name: Recliner Massage Back
+    options: ["Off", "1", "2", "3"]
+    initial: "Off"
+  recliner_massage_lumbar:
+    name: Recliner Massage Lumbar
+    options: ["Off", "1", "2", "3"]
+    initial: "Off"
+  recliner_massage_thigh:
+    name: Recliner Massage Thigh
+    options: ["Off", "1", "2", "3"]
+    initial: "Off"
+  recliner_massage_leg:
+    name: Recliner Massage Leg
+    options: ["Off", "1", "2", "3"]
+    initial: "Off"
+
+cover:
+  - platform: template
+    covers:
+      recliner_back:
+        friendly_name: Recliner Backrest
+        position_template: "{{ states('input_number.recliner_back_pos') | float(0) }}"
+        open_cover:
+          service: input_number.set_value
+          target: { entity_id: input_number.recliner_back_pos }
+          data: { value: 100 }
+        close_cover:
+          service: input_number.set_value
+          target: { entity_id: input_number.recliner_back_pos }
+          data: { value: 0 }
+        stop_cover:
+          service: input_number.set_value
+          target: { entity_id: input_number.recliner_back_pos }
+          data:
+            value: "{{ states('input_number.recliner_back_pos') | float(0) }}"
+        set_cover_position:
+          service: input_number.set_value
+          target: { entity_id: input_number.recliner_back_pos }
+          data: { value: "{{ position }}" }
+
+      recliner_footrest:
+        friendly_name: Recliner Footrest
+        position_template: "{{ states('input_number.recliner_footrest_pos') | float(0) }}"
+        open_cover:
+          service: input_number.set_value
+          target: { entity_id: input_number.recliner_footrest_pos }
+          data: { value: 100 }
+        close_cover:
+          service: input_number.set_value
+          target: { entity_id: input_number.recliner_footrest_pos }
+          data: { value: 0 }
+        stop_cover:
+          service: input_number.set_value
+          target: { entity_id: input_number.recliner_footrest_pos }
+          data:
+            value: "{{ states('input_number.recliner_footrest_pos') | float(0) }}"
+        set_cover_position:
+          service: input_number.set_value
+          target: { entity_id: input_number.recliner_footrest_pos }
+          data: { value: "{{ position }}" }
+
+      recliner_lift:
+        friendly_name: Recliner Lift
+        position_template: "{{ states('input_number.recliner_lift_pos') | float(0) }}"
+        open_cover:
+          service: input_number.set_value
+          target: { entity_id: input_number.recliner_lift_pos }
+          data: { value: 100 }
+        close_cover:
+          service: input_number.set_value
+          target: { entity_id: input_number.recliner_lift_pos }
+          data: { value: 0 }
+        stop_cover:
+          service: input_number.set_value
+          target: { entity_id: input_number.recliner_lift_pos }
+          data:
+            value: "{{ states('input_number.recliner_lift_pos') | float(0) }}"
+        set_cover_position:
+          service: input_number.set_value
+          target: { entity_id: input_number.recliner_lift_pos }
+          data: { value: "{{ position }}" }
+
+switch:
+  - platform: template
+    switches:
+      recliner_heat:
+        friendly_name: Recliner Heat
+        value_template: "{{ is_state('input_boolean.recliner_heat', 'on') }}"
+        turn_on:
+          service: input_boolean.turn_on
+          target: { entity_id: input_boolean.recliner_heat }
+        turn_off:
+          service: input_boolean.turn_off
+          target: { entity_id: input_boolean.recliner_heat }
+
+# Template select entities to make `select.select_option` work end-to-end.
+# Requires HA 2023.6+ for the `template:` -> `select:` shorthand.
+template:
+  - select:
+      - name: Recliner Massage Back
+        unique_id: recliner_massage_back_t
+        state: "{{ states('input_select.recliner_massage_back') }}"
+        options: "{{ state_attr('input_select.recliner_massage_back', 'options') }}"
+        select_option:
+          service: input_select.select_option
+          target: { entity_id: input_select.recliner_massage_back }
+          data: { option: "{{ option }}" }
+      - name: Recliner Massage Lumbar
+        unique_id: recliner_massage_lumbar_t
+        state: "{{ states('input_select.recliner_massage_lumbar') }}"
+        options: "{{ state_attr('input_select.recliner_massage_lumbar', 'options') }}"
+        select_option:
+          service: input_select.select_option
+          target: { entity_id: input_select.recliner_massage_lumbar }
+          data: { option: "{{ option }}" }
+      - name: Recliner Massage Thigh
+        unique_id: recliner_massage_thigh_t
+        state: "{{ states('input_select.recliner_massage_thigh') }}"
+        options: "{{ state_attr('input_select.recliner_massage_thigh', 'options') }}"
+        select_option:
+          service: input_select.select_option
+          target: { entity_id: input_select.recliner_massage_thigh }
+          data: { option: "{{ option }}" }
+      - name: Recliner Massage Leg
+        unique_id: recliner_massage_leg_t
+        state: "{{ states('input_select.recliner_massage_leg') }}"
+        options: "{{ state_attr('input_select.recliner_massage_leg', 'options') }}"
+        select_option:
+          service: input_select.select_option
+          target: { entity_id: input_select.recliner_massage_leg }
+          data: { option: "{{ option }}" }

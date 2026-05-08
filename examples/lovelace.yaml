@@ -1,0 +1,13 @@
+# Drop into a dashboard view to render the card with the stub package.
+type: custom:recliner-card
+name: Living Room Recliner
+subtitle: Living Room · Stub
+recline_entity: cover.recliner_back
+footrest_entity: cover.recliner_footrest
+lift_entity: cover.recliner_lift
+heat_entity: switch.recliner_heat
+massage_zones:
+  back: select.recliner_massage_back
+  lumbar: select.recliner_massage_lumbar
+  thigh: select.recliner_massage_thigh
+  leg: select.recliner_massage_leg
