@@ -360,11 +360,80 @@ export class RecliningCard extends LitElement {
       <ha-card style=${styleStr} class="rc-root">
         <div class="rc-shell">
           ${this._renderHeader(moving)}
+          ${this._renderMemoryRow()}
           ${this._renderHero(s, reclinePct, inclineLabel, t)}
           ${this._renderActionRow(footPct, liftPct, s.heat)}
           ${this._renderMassageRow(s)}
         </div>
       </ha-card>
+    `;
+  }
+
+  // === Memory M1/M2/HOME row (v0.1.5) ===
+  // Memory: short-press = recall, long-press (>=600ms) = save.
+  // HOME: single click triggers home_button entity (Return Home).
+  private _memTimer: { [slot: string]: number | null } = { '1': null, '2': null };
+  private _memLongFired: { [slot: string]: boolean } = { '1': false, '2': false };
+
+  private _onMemDown = (slot: '1' | '2') => (e: PointerEvent): void => {
+    e.preventDefault();
+    const el = e.currentTarget as HTMLElement;
+    try { el.setPointerCapture(e.pointerId); } catch (_err) { /* noop */ }
+    this._memLongFired[slot] = false;
+    if (this._memTimer[slot] !== null) window.clearTimeout(this._memTimer[slot]!);
+    this._memTimer[slot] = window.setTimeout(() => {
+      this._memLongFired[slot] = true;
+      this._memTimer[slot] = null;
+      const ent = slot === '1'
+        ? this._config.save_memory_1_button
+        : this._config.save_memory_2_button;
+      if (ent) this._callService('button', 'press', { entity_id: ent });
+    }, 600);
+  };
+
+  private _onMemUp = (slot: '1' | '2') => (_e: PointerEvent): void => {
+    if (this._memTimer[slot] !== null) {
+      window.clearTimeout(this._memTimer[slot]!);
+      this._memTimer[slot] = null;
+    }
+    if (!this._memLongFired[slot]) {
+      const ent = slot === '1'
+        ? this._config.recall_memory_1_button
+        : this._config.recall_memory_2_button;
+      if (ent) this._callService('button', 'press', { entity_id: ent });
+    }
+  };
+
+  private _onHome = (): void => {
+    const ent = this._config.home_button;
+    if (ent) this._callService('button', 'press', { entity_id: ent });
+  };
+
+  private _renderMemoryRow(): TemplateResult {
+    const hasM1 = !!this._config.recall_memory_1_button || !!this._config.save_memory_1_button;
+    const hasM2 = !!this._config.recall_memory_2_button || !!this._config.save_memory_2_button;
+    const hasHome = !!this._config.home_button;
+    if (!hasM1 && !hasM2 && !hasHome) return html``;
+    return html`
+      <div class="rc-memory-row">
+        ${hasM1 ? html`
+          <button class="rc-mem-btn"
+                  @pointerdown=${this._onMemDown('1')}
+                  @pointerup=${this._onMemUp('1')}
+                  @pointerleave=${this._onMemUp('1')}
+                  @pointercancel=${this._onMemUp('1')}>M1</button>
+        ` : ''}
+        ${hasM2 ? html`
+          <button class="rc-mem-btn"
+                  @pointerdown=${this._onMemDown('2')}
+                  @pointerup=${this._onMemUp('2')}
+                  @pointerleave=${this._onMemUp('2')}
+                  @pointercancel=${this._onMemUp('2')}>M2</button>
+        ` : ''}
+        ${hasHome ? html`
+          <button class="rc-mem-btn rc-mem-home" @click=${this._onHome}>HOME</button>
+        ` : ''}
+      </div>
     `;
   }
 
@@ -553,6 +622,29 @@ export class RecliningCard extends LitElement {
       background: var(--rc-accent);
       box-shadow: 0 0 0 3px var(--rc-accent-soft);
     }
+    .rc-memory-row {
+      display: flex;
+      gap: 8px;
+      justify-content: stretch;
+    }
+    .rc-mem-btn {
+      flex: 1;
+      min-height: 44px;
+      border: 1px solid var(--rc-border);
+      border-radius: 12px;
+      background: var(--rc-pill);
+      color: var(--rc-text);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+      user-select: none;
+      touch-action: none;
+    }
+    .rc-mem-btn:hover { background: var(--rc-pill-active); }
+    .rc-mem-btn:active { transform: scale(0.97); }
+    .rc-mem-home { background: var(--rc-accent-soft); color: var(--rc-accent); }
     .rc-status-label {
       font-size: 11px;
       font-weight: 600;

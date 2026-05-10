@@ -15,6 +15,14 @@ export interface RecliningCardConfig extends LovelaceCardConfig {
   heat_entity?: string;
   massage_zones?: Partial<Record<Zone, string>>;
   theme?: Theme;
+  // Memory + Home buttons (top of card). Each maps to a HA button.* entity
+  // that the card calls via button.press service. Memory M1/M2 use long-press
+  // for save_*, short-press for recall_*. Home uses single press.
+  save_memory_1_button?: string;
+  recall_memory_1_button?: string;
+  save_memory_2_button?: string;
+  recall_memory_2_button?: string;
+  home_button?: string;
 }
 
 export interface RecliningChairProps {
