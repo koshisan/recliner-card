@@ -1,6 +1,6 @@
 {
   "name": "recliner-card",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Home Assistant Lovelace card for powered recliner control (recline, footrest, lift, heat, massage zones).",
   "main": "dist/recliner-card.js",
   "type": "module",

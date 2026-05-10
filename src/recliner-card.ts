@@ -204,6 +204,12 @@ export class RecliningCard extends LitElement {
   private _tickHold(): void {
     if (!this._holdEnvelope) return;
     const { mkey, otherKey } = this._holdEnvelope;
+    // For real cover entities, position is reported by upstream (e.g., ESPHome
+    // dead-reckoning) — don't fake-ramp the local display, it'd race ahead of
+    // the physical chair. Only ramp when the entity is a stub helper
+    // (input_number, number) that doesn't have its own motion model.
+    const entityId = this._entityFor(mkey);
+    if (entityId && this._domainOf(entityId) === 'cover') return;
     const cur = this._local;
     if (otherKey && cur[otherKey] > 0.001) {
       this._setLocal({ [otherKey]: Math.max(0, cur[otherKey] - RAMP_STEP), moving: mkey } as Partial<RecliningState>);
