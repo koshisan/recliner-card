@@ -258,7 +258,19 @@ export class RecliningCard extends LitElement {
 
   private _dispatchHoldStart(mkey: MotorKey, otherKey: MotorKey | null): void {
     const target = this._entityFor(mkey);
-    if (target) this._writePosition(target, 1);
+    if (!target) return;
+    if (this._domainOf(target) === 'cover') {
+      // Cover entity: use open_cover. The downstream (e.g. ESPHome) handles
+      // XOR-coordination between footrest/lift on its own (the chair motor
+      // physically retracts the other axis first). Setting position=100
+      // explicitly + pre-emptively closing the otherKey would race with the
+      // firmware's cover_active state and confuse the motion controller.
+      this._callService('cover', 'open_cover', { entity_id: target });
+      return;
+    }
+    // Stub helper (input_number/number): no motion model downstream, so
+    // pre-emptively reset the other axis and write target=100 here.
+    this._writePosition(target, 1);
     if (otherKey) {
       const otherEnt = this._entityFor(otherKey);
       const otherVal = this._local[otherKey];
@@ -273,7 +285,12 @@ export class RecliningCard extends LitElement {
       const ent = this._entityFor(key);
       if (!ent) continue;
       this._writeStop(ent);
-      this._writePosition(ent, this._local[key]);
+      // For covers: stop is enough — the firmware reports the actual position
+      // and we sync from there. Writing position again would re-trigger a
+      // motion towards "current local" which races with the just-issued stop.
+      if (this._domainOf(ent) !== 'cover') {
+        this._writePosition(ent, this._local[key]);
+      }
     }
   }
 
