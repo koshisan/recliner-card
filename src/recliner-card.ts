@@ -14,7 +14,17 @@ import {
   HA_TOKENS,
 } from './types.js';
 
-const VERSION = '0.1.2';
+const VERSION = '0.1.7';
+
+type PowerState = 'off' | 'starting' | 'idle' | 'on' | 'unknown';
+
+const POWER_LABEL: Record<PowerState, string> = {
+  off: 'Power off',
+  starting: 'Starting…',
+  idle: 'Idle',
+  on: 'Power on',
+  unknown: '—',
+};
 
 const RAMP_TICK_MS = 30;
 const RAMP_STEP = 0.025;
@@ -408,12 +418,45 @@ export class RecliningCard extends LitElement {
     if (ent) this._callService('button', 'press', { entity_id: ent });
   };
 
+  // Power-state pill: derives a 4-state label from the Tapo switch state,
+  // the Tapo power sensor, and ESP reachability (probed via one of the
+  // recliner3 cover entities going unavailable).
+  private _computePowerState(): PowerState {
+    const sw = this._config.power_switch_entity;
+    if (!sw || !this.hass) return 'unknown';
+    const swState = this.hass.states[sw]?.state;
+    if (!swState) return 'unknown';
+    if (swState !== 'on') return 'off';
+
+    const probeEnt = this._config.recline_entity
+      ?? this._config.footrest_entity
+      ?? this._config.lift_entity;
+    const probeState = probeEnt ? this.hass.states[probeEnt]?.state : undefined;
+    const probeUnavailable = !probeEnt || probeState === undefined
+      || probeState === 'unavailable' || probeState === 'unknown';
+    if (probeUnavailable) return 'starting';
+
+    const sensorEnt = this._config.power_sensor_entity;
+    const threshold = this._config.power_threshold_w ?? 2.5;
+    const raw = sensorEnt ? this.hass.states[sensorEnt]?.state : undefined;
+    const power = raw !== undefined ? parseFloat(raw) : NaN;
+    return Number.isFinite(power) && power > threshold ? 'on' : 'idle';
+  }
+
+  private _onPowerClick = (): void => {
+    const ent = this._config.power_switch_entity;
+    if (ent) this._callService('switch', 'toggle', { entity_id: ent });
+  };
+
 
   private _renderHeader(moving: boolean): TemplateResult {
-    const subtitle = this._config.subtitle ?? 'Online';
     const hasM1 = !!this._config.recall_memory_1_button || !!this._config.save_memory_1_button;
     const hasM2 = !!this._config.recall_memory_2_button || !!this._config.save_memory_2_button;
     const hasHome = !!this._config.home_button;
+    const hasPower = !!this._config.power_switch_entity;
+    const powerState = this._computePowerState();
+    const subtitle = this._config.subtitle
+      ?? (hasPower ? POWER_LABEL[powerState] : 'Online');
     return html`
       <div class="rc-header">
         <div class="rc-header-text">
@@ -440,9 +483,18 @@ export class RecliningCard extends LitElement {
                     @click=${this._onHome}
                     title="Return Home">⌂</button>
           ` : ''}
-          <div class="rc-status">
-            <div class="rc-dot ${moving ? 'on' : ''}"></div>
-          </div>
+          ${hasPower ? html`
+            <button class="rc-power-pill rc-power-${powerState}"
+                    @click=${this._onPowerClick}
+                    title="Toggle ${this._config.power_switch_entity}">
+              <span class="rc-power-dot"></span>
+              <span class="rc-power-label">${POWER_LABEL[powerState]}</span>
+            </button>
+          ` : html`
+            <div class="rc-status">
+              <div class="rc-dot ${moving ? 'on' : ''}"></div>
+            </div>
+          `}
         </div>
       </div>
     `;
@@ -654,6 +706,53 @@ export class RecliningCard extends LitElement {
       color: var(--rc-text-dim);
       text-transform: uppercase;
       letter-spacing: 0.5px;
+    }
+    .rc-power-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--rc-border);
+      border-radius: 999px;
+      background: var(--rc-pill);
+      color: var(--rc-text-dim);
+      padding: 0 10px;
+      height: 28px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      user-select: none;
+      transition: background .15s, color .15s, border-color .15s, transform .1s;
+    }
+    .rc-power-pill:hover { background: var(--rc-pill-active); }
+    .rc-power-pill:active { transform: scale(0.96); }
+    .rc-power-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 3px transparent;
+      transition: box-shadow .2s;
+    }
+    .rc-power-off    { color: var(--rc-text-dim); }
+    .rc-power-idle   { color: var(--rc-accent); }
+    .rc-power-idle .rc-power-dot {
+      box-shadow: 0 0 0 3px var(--rc-accent-soft);
+    }
+    .rc-power-on     {
+      color: var(--rc-accent);
+      border-color: var(--rc-accent-soft);
+      background: var(--rc-accent-soft);
+    }
+    .rc-power-on .rc-power-dot {
+      box-shadow: 0 0 0 3px var(--rc-accent-soft);
+    }
+    .rc-power-starting { color: var(--rc-heat); }
+    .rc-power-starting .rc-power-dot {
+      box-shadow: 0 0 0 3px var(--rc-heat-soft);
+      animation: rc-pulse 1s ease-in-out infinite;
+    }
+    @keyframes rc-pulse {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.45; }
     }
 
     .rc-hero {

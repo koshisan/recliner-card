@@ -23,6 +23,12 @@ export interface RecliningCardConfig extends LovelaceCardConfig {
   save_memory_2_button?: string;
   recall_memory_2_button?: string;
   home_button?: string;
+  // Power state pill (header, right of memory buttons). Click toggles the
+  // switch; visual state derived from switch + Tapo power sensor + ESP
+  // reachability (a recliner3 entity going unavailable).
+  power_switch_entity?: string;       // e.g. switch.vrrecliner (Tapo plug)
+  power_sensor_entity?: string;       // e.g. sensor.vrrecliner_current_power
+  power_threshold_w?: number;         // active vs idle cutoff, default 2.5
 }
 
 export interface RecliningChairProps {
